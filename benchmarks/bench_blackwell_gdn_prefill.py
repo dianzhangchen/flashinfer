@@ -31,9 +31,11 @@ from typing import List
 
 import torch
 import torch.nn.functional as F
+import numpy as np
+from flashinfer.testing import bench_gpu_time
 
 # Blackwell GDN prefill
-from flashinfer.gdn_kernels.blackwell_prefill.gdn import chunk_gated_delta_rule
+from flashinfer.gdn_prefill import chunk_gated_delta_rule
 
 # FLA baseline
 from fla.ops.gated_delta_rule.chunk import chunk_gated_delta_rule_fwd as fla_base
@@ -99,53 +101,35 @@ def benchmark_gdn_fixlen(
     output_final_state = True
 
     o = torch.zeros_like(v)
-    # Warmup
-    for _ in range(warmup_iters):
-        chunk_gated_delta_rule(
-            q,
-            k,
-            v,
-            g,
-            beta,
-            None,
-            h0,
-            output_final_state,
-            None,
-            False,
-            o,
-            None,
-        )
-    torch.cuda.synchronize()
+    state_output = torch.randn(
+        (batch_size, num_v_heads, head_dim, head_dim),
+        dtype=torch.float32,
+        device=device,
+    )
 
-    # Benchmark
-    torch.cuda.reset_peak_memory_stats()
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
+    fn_gdn = lambda: chunk_gated_delta_rule(
+        q,
+        k,
+        v,
+        g,
+        beta,
+        None,
+        h0,
+        output_final_state,
+        None,
+        False,
+        o,
+        state_output,
+    )
 
-    o.zero_()
+    kernel_times_ms = bench_gpu_time(
+        fn_gdn,
+        enable_cupti=True,
+        dry_run_iters=warmup_iters,
+        repeat_iters=benchmark_iters,
+    )
 
-    start_event.record()
-    for _ in range(benchmark_iters):
-        chunk_gated_delta_rule(
-            q,
-            k,
-            v,
-            g,
-            beta,
-            None,
-            h0,
-            output_final_state,
-            None,
-            False,
-            o,
-            None,
-        )
-
-    end_event.record()
-    torch.cuda.synchronize()
-
-    elapsed_ms = start_event.elapsed_time(end_event)
-    avg_latency_ms = elapsed_ms / benchmark_iters
+    avg_latency_ms = np.average(kernel_times_ms)
 
     # FLA baseline
     fla_latency_ms = None
@@ -161,19 +145,13 @@ def benchmark_gdn_fixlen(
             output_final_state=output_final_state,
         )
 
-        for _ in range(warmup_iters):
-            fn_fla()
-        torch.cuda.synchronize()
-
-        fla_start = torch.cuda.Event(enable_timing=True)
-        fla_end = torch.cuda.Event(enable_timing=True)
-        fla_start.record()
-        for _ in range(benchmark_iters):
-            fn_fla()
-        fla_end.record()
-        torch.cuda.synchronize()
-
-        fla_latency_ms = fla_start.elapsed_time(fla_end) / benchmark_iters
+        fla_times_ms = bench_gpu_time(
+            fn_fla,
+            enable_cupti=True,
+            dry_run_iters=warmup_iters,
+            repeat_iters=benchmark_iters,
+        )
+        fla_latency_ms = np.average(fla_times_ms)
 
     result = {
         "batch_size": batch_size,
@@ -239,53 +217,29 @@ def benchmark_gdn_varlen(
     o = torch.zeros_like(v)
     state_output = torch.zeros_like(h0, dtype=torch.float32)
 
-    # Warmup
-    for _ in range(warmup_iters):
-        chunk_gated_delta_rule(
-            q,
-            k,
-            v,
-            g,
-            beta,
-            None,
-            h0,
-            True,
-            cu_seqlens_tensor,
-            False,
-            o,
-            state_output,
-        )
-    torch.cuda.synchronize()
+    fn_gdn = lambda: chunk_gated_delta_rule(
+        q,
+        k,
+        v,
+        g,
+        beta,
+        None,
+        h0,
+        True,
+        cu_seqlens_tensor,
+        False,
+        o,
+        state_output,
+    )
 
-    # Benchmark
-    torch.cuda.reset_peak_memory_stats()
-    start_event = torch.cuda.Event(enable_timing=True)
-    end_event = torch.cuda.Event(enable_timing=True)
+    kernel_times_ms = bench_gpu_time(
+        fn_gdn,
+        enable_cupti=True,
+        dry_run_iters=warmup_iters,
+        repeat_iters=benchmark_iters,
+    )
 
-    o.zero_()
-    state_output.zero_()
-
-    start_event.record()
-    for _ in range(benchmark_iters):
-        chunk_gated_delta_rule(
-            q,
-            k,
-            v,
-            g,
-            beta,
-            None,
-            h0,
-            True,
-            cu_seqlens_tensor,
-            False,
-            o,
-            state_output,
-        )
-    end_event.record()
-    torch.cuda.synchronize()
-
-    elapsed_ms = start_event.elapsed_time(end_event)
-    avg_latency_ms = elapsed_ms / benchmark_iters
+    avg_latency_ms = np.average(kernel_times_ms)
 
     return {
         "num_seqs": num_seqs,
@@ -436,19 +390,19 @@ def print_results_table(results: List[dict], title: str = "Benchmark Results"):
 
 def main():
     parser = argparse.ArgumentParser(description="GDN Performance Benchmark")
-    parser.add_argument("--batch-size", "-b", type=int, default=4, help="Batch size")
+    parser.add_argument("--batch-size", "-b", type=int, default=1, help="Batch size")
     parser.add_argument(
-        "--seq-len", "-t", type=int, default=4096, help="Sequence length"
+        "--seq-len", "-t", type=int, default=8192, help="Sequence length"
     )
     parser.add_argument(
         "--num-qk-heads",
         "-nqk",
         type=int,
-        default=32,
+        default=96,
         help="Number of qk attention heads",
     )
     parser.add_argument(
-        "--num-v-heads", "-nv", type=int, default=32, help="Number of v attention heads"
+        "--num-v-heads", "-nv", type=int, default=96, help="Number of v attention heads"
     )
     parser.add_argument(
         "--head-dim", "-d", type=int, default=128, help="Head dimension"
