@@ -1631,10 +1631,7 @@ class GDN:
                 sStateInput,
                 gate_tail,
             )
-            cute.arch.fence_proxy(
-                cute.arch.ProxyKind.async_shared,
-                space=cute.arch.SharedSpace.shared_cta,
-            )
+            cute.arch.fence_view_async_shared()
 
             qk_handle1 = mma_qk_consumer0.wait_and_advance()
             self.load_qk_epi(
@@ -1939,10 +1936,7 @@ class GDN:
             cute.copy(tiled_smem_store, tTMEM_LOADrS, tTMEM_STOREsO_i)
 
         # fence view async shared
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def store_o_smem(
@@ -2045,10 +2039,7 @@ class GDN:
             cute.copy(tiled_smem_store, tTMEM_STORErS_x4_e, tTMEM_STOREsO_i)
 
         # fence view async shared
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def load_k(
@@ -2087,10 +2078,7 @@ class GDN:
                     (k_f16_frag[None, store_col].load() * gate_val).to(self.i_dtype)
                 )
 
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def init_state_zeros(
@@ -2761,10 +2749,7 @@ class GDN:
                         ((None, (col_true, 1)), lane_id % 8), 0, lane_id // 8, 0
                     ].store(tmem_frag[((None, j), 0), 0, 0].load())
 
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def store_ivt_smem_l1_ss_b(
@@ -2879,10 +2864,7 @@ class GDN:
                     ((None, (col_true, sub_id_row)), lane_id % 8), 0, lane_id // 8, 0
                 ].store(sReg[(None, tidx % 128), col_true].load())
 
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def store_ivt_p2(
@@ -2914,10 +2896,7 @@ class GDN:
                 sInvertSubSSL1A_frag[
                     (lane_id, (None, col_true % 2)), 0, (col_true // 2, 1), 0
                 ].store(zeros)
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def store_ivt_p3(
@@ -2951,10 +2930,7 @@ class GDN:
                 sInvertSubTSL1B_frag[
                     ((None, (col_true, 1)), lane_id % 8), 0, lane_id // 8 + 0, 0
                 ].store(zeros)
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def load_store_tmem_tune(
@@ -3110,10 +3086,7 @@ class GDN:
                 tTR_rO_frg[None, it].load().to(self.i_dtype)
             )
 
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def load_ivt_result(
@@ -3170,10 +3143,7 @@ class GDN:
                 it // 2,
             ] = tTR_rO_e_f32[it * 2 + 1]
 
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def apply_gamma_beta(
@@ -3684,10 +3654,7 @@ class GDN:
                         0,
                     ].store(-tTR_rO_s_frag_f1[(None, 1), it].load())
 
-        cute.arch.fence_proxy(
-            cute.arch.ProxyKind.async_shared,
-            space=cute.arch.SharedSpace.shared_cta,
-        )
+        cute.arch.fence_view_async_shared()
 
     @cute.jit
     def store_ivt_c(
