@@ -129,6 +129,9 @@ TrtllmGenBatchedGemmRunner::TrtllmGenBatchedGemmRunner(
         if (options.mActType != static_cast<batchedGemm::gemmGatedAct::ActType>(mOptions.actType)) {
           continue;
         }
+        if (options.mClampAfterSwish != mOptions.clampAfterSwish) {
+          continue;
+        }
       }
       if ((int64_t)options.mEltwiseActType != (int64_t)mOptions.eltwiseActType) {
         continue;
@@ -157,6 +160,7 @@ TrtllmGenBatchedGemmRunner::TrtllmGenBatchedGemmRunner(
             << ", mUseDeepSeekFp8: " << mOptions.deepSeekFp8
             << ", mActType: " << (int64_t)mOptions.actType
             << ", mEltwiseActType: " << (int64_t)mOptions.eltwiseActType
+            << ", mClampAfterSwish: " << mOptions.clampAfterSwish
             << ", mTransposeMmaOutput: " << mOptions.transposeMmaOutput
             << ", mRouteAct: " << mOptions.routeAct << ", mFusedAct: " << mOptions.fusedAct
             << ", mIsStaticBatch: " << mOptions.staticBatch << ", mTileSize: " << mOptions.tileSize

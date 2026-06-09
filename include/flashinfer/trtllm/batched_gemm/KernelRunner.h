@@ -71,6 +71,7 @@ struct TrtllmGenBatchedGemmRunnerOptions {
   EltwiseActType eltwiseActType{EltwiseActType::None};
   bool deepSeekFp8{false};
   bool fusedAct{false};
+  bool clampAfterSwish{false};
   bool routeAct{false};
   bool staticBatch{false};
   bool transposeMmaOutput{false};

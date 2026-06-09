@@ -325,6 +325,7 @@ using tensorrt_llm::kernels::trtllmgen_moe::MoE::serializeActivationType;
 static inline ActType activationTypeToGatedActType(ActivationType actType) {
   switch (actType) {
     case ActivationType::Swiglu:
+    case ActivationType::SwigluStep:
       return ActType::SwiGlu;
     case ActivationType::Geglu:
       return ActType::GeGlu;
@@ -367,11 +368,16 @@ tensorrt_llm::kernels::TrtllmGenBatchedGemmRunnerOptions getOptions(
   if (useBiasMn) {
     // These checks are because trtllm-gen only exports a subset of the bias types and modes
     FLASHINFER_CHECK(isGatedAct,
-                     "PermuteGemm1 BiasType::Mn requires a gated activation (SwiGlu/GeGlu)");
+                     "PermuteGemm1 BiasType::Mn requires a gated activation "
+                     "(SwiGlu/GeGlu/SwigluStep)");
     FLASHINFER_CHECK(!useDeepSeekFp8,
                      "PermuteGemm1 BiasType::Mn requires fusedAct=true (not DeepSeek FP8)");
     FLASHINFER_CHECK(useShuffledMatrix,
                      "PermuteGemm1 BiasType::Mn requires useShuffledMatrix=true");
+  }
+  if (activationType == ActivationType::SwigluStep) {
+    FLASHINFER_CHECK(!useDeepSeekFp8,
+                     "PermuteGemm1 SwigluStep requires fusedAct=true (not DeepSeek FP8)");
   }
   if (isGatedAct) {
     ActType actType = activationTypeToGatedActType(activationType);
@@ -383,6 +389,7 @@ tensorrt_llm::kernels::TrtllmGenBatchedGemmRunnerOptions getOptions(
         .actType = actType,
         .deepSeekFp8 = useDeepSeekFp8,
         .fusedAct = !useDeepSeekFp8,
+        .clampAfterSwish = activationType == ActivationType::SwigluStep,
         .routeAct = true,
         .staticBatch = false,
         .transposeMmaOutput = true,

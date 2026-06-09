@@ -2905,7 +2905,8 @@ def trtllm_fp8_per_tensor_scale_moe(
             - 3: Swiglu
             - 4: Geglu
             - 6: Relu2 (non-gated)
-            - 7: Identity
+            - 7: SwigluStep
+            - 8: Identity
 
     Returns:
         ``List[torch.Tensor]``, depending on ``do_finalize``:
@@ -3020,7 +3021,8 @@ def trtllm_fp8_block_scale_moe(
             - 3: Swiglu
             - 4: Geglu
             - 6: Relu2
-            - 7: Identity
+            - 7: SwigluStep
+            - 8: Identity
         routing_replay_out (Optional[torch.Tensor]): Optional int16 output tensor of shape
             (num_tokens_or_larger, top_k) to capture selected expert IDs during routing.
             Column order matches topk_indices. When None (default), zero overhead - the
@@ -3155,7 +3157,8 @@ def trtllm_fp8_block_scale_routed_moe(
             - 3: Swiglu
             - 4: Geglu
             - 6: Relu2
-            - 7: Identity
+            - 7: SwigluStep
+            - 8: Identity
     Returns:
         ``List[torch.Tensor]``, depending on ``do_finalize`` and ``gemm1_lora_delta``:
 
@@ -3303,7 +3306,8 @@ def trtllm_fp4_block_scale_moe(
             - 3: Swiglu
             - 4: Geglu
             - 6: Relu2
-            - 7: Identity
+            - 7: SwigluStep
+            - 8: Identity
         per_token_scale (Optional[torch.Tensor]): shape [seq_len]
             Tensor of per-token scaling factors. Dtype must be float32.
         tune_max_num_tokens(int): Maximum number of tokens for tuning. (default: 8192)
@@ -3460,7 +3464,8 @@ def trtllm_fp4_block_scale_routed_moe(
             - 3: Swiglu
             - 4: Geglu
             - 6: Relu2
-            - 7: Identity
+            - 7: SwigluStep
+            - 8: Identity
         per_token_scale (Optional[torch.Tensor]): shape [seq_len]
             Tensor of per-token scaling factors. Dtype must be float32.
         tune_max_num_tokens(int): Maximum number of tokens for tuning. (default: 8192)
